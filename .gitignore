@@ -1,0 +1,36 @@
+# Delphi build files
+*.dcu
+*.exe
+*.dll
+*.bpl
+*.dcp
+*.bpi
+*.map
+*.tds
+*.rsm
+*.local
+*.identcache
+*.stat
+*.tvsconfig
+
+# Delphi folders
+__history/
+__recovery/
+Win32/
+Win64/
+Debug/
+Release/
+ModelSupport/
+
+# RAD Studio
+*.projdata
+*.deployproj
+*.groupproj.local
+*.dproj.local
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
+.DS_Store
