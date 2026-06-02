@@ -1,4 +1,4 @@
-unit uFrameLoadingOverlay;
+﻿unit uFrameLoadingOverlay;
 
 interface
 
@@ -30,6 +30,16 @@ type
     procedure AjustarLayout;
     procedure AtualizarMensagem(const AMensagem: string);
     procedure AtualizarSubMensagem(const AMensagem: string);
+
+    procedure Mostrar(
+      const AMensagem: string;
+      const ASubMensagem: string = '');
+
+    procedure Atualizar(
+      const AMensagem: string;
+      const ASubMensagem: string = '');
+
+    procedure Ocultar;
   end;
 
 implementation
@@ -152,6 +162,39 @@ begin
     FSubMensagem.Caption := AMensagem;
     FSubMensagem.Update;
   end;
+end;
+
+procedure TFrameLoadingOverlay.Mostrar(
+  const AMensagem: string;
+  const ASubMensagem: string);
+begin
+  Atualizar(
+    AMensagem,
+    ASubMensagem
+  );
+
+  Align := alClient;
+  Visible := True;
+  Enabled := True;
+  BringToFront;
+
+  Update;
+end;
+
+procedure TFrameLoadingOverlay.Atualizar(
+  const AMensagem: string;
+  const ASubMensagem: string);
+begin
+  FMensagem.Caption := AMensagem;
+  FSubMensagem.Caption := ASubMensagem;
+
+  BringToFront;
+  Update;
+end;
+
+procedure TFrameLoadingOverlay.Ocultar;
+begin
+  Visible := False;
 end;
 
 end.

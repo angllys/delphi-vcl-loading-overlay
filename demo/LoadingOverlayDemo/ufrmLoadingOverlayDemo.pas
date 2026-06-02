@@ -52,11 +52,14 @@ type
     mmLog: TMemo;
     pnStatus: TPanel;
     lblStatus: TLabel;
+    btnAsyncHelper: TButton;
+
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btnProcessoSyncClick(Sender: TObject);
     procedure btnProcessoTTaskClick(Sender: TObject);
     procedure btnProcessoTThreadClick(Sender: TObject);
+    procedure btnAsyncHelperClick(Sender: TObject);
   private
     FLoading: TLoadingOverlayHelper;
 
@@ -146,12 +149,14 @@ procedure TfrmLoadingOverlayDemo.FormCreate(Sender: TObject);
 begin
   FLoading := TLoadingOverlayHelper.Create(Self, pnPrincipal);
 
+  btnAsyncHelper.OnClick := btnAsyncHelperClick;
+
   mmLog.Clear;
 
   DefinirStatus('Pronto para executar os exemplos.');
 
   AdicionarLog('Demo iniciado.');
-  AdicionarLog('Escolha um dos três cenários: síncrono, TTask ou TThread.');
+  AdicionarLog('Escolha um dos quatro cenários: síncrono, TTask, TThread ou Async Helper.');
 end;
 
 procedure TfrmLoadingOverlayDemo.FormDestroy(Sender: TObject);
@@ -176,6 +181,7 @@ begin
   btnProcessoSync.Enabled := AHabilitar;
   btnProcessoTTask.Enabled := AHabilitar;
   btnProcessoTThread.Enabled := AHabilitar;
+  btnAsyncHelper.Enabled := AHabilitar;
 end;
 
 procedure TfrmLoadingOverlayDemo.SimularEtapa(
@@ -205,6 +211,7 @@ begin
 
   try
     AdicionarLog('Iniciando processo síncrono.');
+    AdicionarLog('Neste exemplo, o processamento roda na thread principal.');
 
     SimularEtapa('Etapa 1 de 3: preparando dados...', 900);
     SimularEtapa('Etapa 2 de 3: processando informações...', 900);
@@ -386,6 +393,44 @@ begin
     end;
 
   lThread.Start;
+end;
+
+procedure TfrmLoadingOverlayDemo.btnAsyncHelperClick(Sender: TObject);
+begin
+  HabilitarBotoes(False);
+
+  AdicionarLog('Iniciando processo com ExecuteAsync do helper.');
+  DefinirStatus('Executando ExecuteAsync...');
+
+  FLoading.ExecuteAsync(
+    'Processo com ExecuteAsync',
+    'O helper mostra o overlay, executa em background e finaliza automaticamente.',
+    procedure
+    begin
+      Sleep(1000);
+      Sleep(1200);
+      Sleep(1200);
+      Sleep(900);
+    end,
+    procedure
+    begin
+      AdicionarLog('ExecuteAsync finalizado com sucesso.');
+      DefinirStatus('ExecuteAsync concluído.');
+
+      HabilitarBotoes(True);
+
+      ShowMessage('Processo com ExecuteAsync concluído com sucesso!');
+    end,
+    procedure(const AErro: string)
+    begin
+      AdicionarLog('Erro no ExecuteAsync: ' + AErro);
+      DefinirStatus('Erro no ExecuteAsync.');
+
+      HabilitarBotoes(True);
+
+      ShowMessage('Erro no ExecuteAsync: ' + AErro);
+    end
+  );
 end;
 
 end.
