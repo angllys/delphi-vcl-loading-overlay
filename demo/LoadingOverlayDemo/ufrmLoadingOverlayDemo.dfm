@@ -100,6 +100,15 @@ object frmLoadingOverlayDemo: TfrmLoadingOverlayDemo
         TabOrder = 2
         OnClick = btnProcessoTThreadClick
       end
+      object btnAsyncHelper: TButton
+        Left = 624
+        Top = 18
+        Width = 180
+        Height = 34
+        Caption = 'Async Helper'
+        TabOrder = 3
+        OnClick = btnAsyncHelperClick
+      end
     end
     object pnStatus: TPanel
       Left = 0

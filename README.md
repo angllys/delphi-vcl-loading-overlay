@@ -1,10 +1,12 @@
 # Delphi VCL Loading Overlay
 
-Helper reutilizável de Loading Overlay para aplicações Delphi VCL.
+Helper reutilizável de **Loading Overlay** para aplicações **Delphi VCL**.
 
-Este projeto fornece um overlay visual leve, moderno e reutilizável para operações demoradas em sistemas Delphi VCL, especialmente em processos síncronos, `TTask`, `TThread`, chamadas de API, consultas ao banco de dados, sincronizações e carregamento de `TFDMemTable`.
+Este projeto fornece um overlay visual leve, moderno e reutilizável para operações demoradas em sistemas Delphi VCL, especialmente em processos síncronos, `TTask`, `TThread`, chamadas de API, consultas ao banco de dados, sincronizações, exportações, importações, geração de arquivos e carregamento de dados.
 
-O objetivo é melhorar a experiência do usuário, evitando que a aplicação pareça travada durante processos demorados ou executados em segundo plano.
+O objetivo é melhorar a experiência do usuário e evitar que a aplicação pareça travada durante processos demorados.
+
+> Versão atual: **1.1.0 — Async Support**
 
 ---
 
@@ -18,7 +20,64 @@ Este helper resolve esse problema exibindo um overlay semelhante ao comportament
 - exibe uma mensagem de processamento;
 - mostra uma barra de progresso indeterminada;
 - permite atualizar a mensagem durante o processo;
-- pode ser reutilizado em qualquer tela VCL.
+- pode ser reutilizado em qualquer tela VCL;
+- agora também pode executar processos assíncronos via `ExecuteAsync`.
+
+---
+
+## Novidade da versão 1.1.0
+
+A versão **1.1.0** adiciona suporte assíncrono ao helper através do método:
+
+```delphi
+ExecuteAsync
+```
+
+Essa evolução permite executar processos demorados em segundo plano usando `TTask`, mantendo a interface VCL responsiva.
+
+O helper passa a centralizar:
+
+- exibição do overlay;
+- execução do processo em background;
+- ocultação automática do overlay;
+- callback de sucesso;
+- callback de erro;
+- tratamento visual padronizado para operações demoradas.
+
+---
+
+## Importante: por que a VCL trava?
+
+O overlay melhora a experiência visual, mas ele não impede travamento se o processo pesado for executado diretamente na thread principal.
+
+Em Delphi VCL, qualquer rotina pesada executada na thread principal pode congelar a interface, por exemplo:
+
+- query demorada;
+- `FetchAll`;
+- importação de arquivo;
+- exportação de arquivo;
+- geração de relatório;
+- processamento em lote;
+- cálculo pesado;
+- sincronização longa.
+
+Evite este padrão para operações pesadas:
+
+```delphi
+FLoading.Mostrar(
+  'Carregando...',
+  'Aguarde enquanto os dados são carregados.'
+);
+
+FDQuery.Open;
+FDQuery.FetchAll;
+
+FLoading.Ocultar;
+```
+
+O ideal é executar a rotina pesada fora da thread principal, usando `TTask` ou `TThread`.
+
+A versão 1.1.0 facilita isso com `ExecuteAsync`.
 
 ---
 
@@ -30,7 +89,10 @@ Este helper resolve esse problema exibindo um overlay semelhante ao comportament
 - Funciona com processos síncronos
 - Funciona com `TTask.Run`
 - Funciona com `TThread`
-- Funciona com `TThread.Synchronize` e `TThread.Queue`
+- Suporte a `TThread.Synchronize` e `TThread.Queue`
+- Suporte a execução assíncrona via `ExecuteAsync`
+- Callback de sucesso
+- Callback de erro
 - Ideal para APIs, banco de dados, sincronizações e operações demoradas
 - Sem dependências externas
 - Criado dinamicamente por código
@@ -68,22 +130,63 @@ Classe helper reutilizável responsável por:
 - exibir o overlay;
 - atualizar mensagens;
 - ocultar o overlay;
-- restaurar o cursor anterior;
-- evitar repetição de código nas telas.
+- controlar posicionamento;
+- executar processos assíncronos com `ExecuteAsync`;
+- reduzir repetição de código nas telas.
+
+---
+
+## Modos de posicionamento
+
+A classe `TLoadingOverlayHelper` suporta dois modos de posicionamento:
+
+```delphi
+TLoadingOverlayPositionMode = (
+  lopAlignClient,
+  lopAbsolute
+);
+```
+
+### `lopAlignClient`
+
+Modo padrão.
+
+O overlay é alinhado com `alClient` dentro do container informado.
+
+Uso recomendado para telas simples:
+
+```delphi
+FLoading := TLoadingOverlayHelper.Create(Self, pnPrincipal);
+```
+
+### `lopAbsolute`
+
+Modo alternativo para telas onde o overlay precisa ficar acima de painéis e componentes específicos.
+
+Uso recomendado quando o overlay aparece atrás de outros componentes:
+
+```delphi
+FLoading := TLoadingOverlayHelper.Create(
+  Self,
+  pnPrincipal,
+  lopAbsolute
+);
+```
 
 ---
 
 ## Cenários de uso suportados
 
-O helper pode ser usado em três cenários principais:
+O helper pode ser usado em quatro cenários principais:
 
 1. Processo síncrono;
 2. Processo com `TTask`;
-3. Processo com `TThread`.
+3. Processo com `TThread`;
+4. Processo com `ExecuteAsync`.
 
-O overlay em si não depende de `TTask` nem de `TThread`. Ele é apenas um helper visual.
+O overlay em si não depende de `TTask` nem de `TThread`. Ele é um helper visual.
 
-Para operações demoradas, porém, é recomendado usar `TTask` ou `TThread` para manter a interface VCL responsiva.
+Para operações demoradas, porém, é recomendado usar `ExecuteAsync`, `TTask` ou `TThread` para manter a interface VCL responsiva.
 
 ---
 
@@ -149,7 +252,7 @@ FLoading.Ocultar;
 
 ## Exemplo 1 — Processo síncrono
 
-Use este modelo para processos curtos.
+Use este modelo apenas para processos curtos.
 
 ```delphi
 procedure TMinhaTela.ExecutarProcessoSincrono;
@@ -179,7 +282,7 @@ end;
 
 Este cenário é indicado para rotinas pequenas.
 
-Para processos pesados, prefira `TTask` ou `TThread`.
+Para processos pesados, prefira `ExecuteAsync`, `TTask` ou `TThread`.
 
 ---
 
@@ -196,49 +299,43 @@ begin
   );
 
   TTask.Run(
-    TProc(
-      procedure
-      begin
-        try
-          // Processo demorado fora da thread principal
-          Sleep(3000);
+    procedure
+    begin
+      try
+        // Processo demorado fora da thread principal
+        Sleep(3000);
 
-          TThread.Synchronize(
-            nil,
-            TThreadProcedure(
-              procedure
-              begin
-                try
-                  FLoading.Atualizar(
-                    'Atualizando interface...',
-                    'Carregando os dados na tela.'
-                  );
-
-                  // Atualização segura da interface
-                finally
-                  FLoading.Ocultar;
-                end;
-              end
-            )
-          );
-
-        except
-          on E: Exception do
+        TThread.Queue(
+          nil,
+          procedure
           begin
-            TThread.Synchronize(
-              nil,
-              TThreadProcedure(
-                procedure
-                begin
-                  FLoading.Ocultar;
-                  ShowMessage(E.Message);
-                end
-              )
-            );
-          end;
+            try
+              FLoading.Atualizar(
+                'Atualizando interface...',
+                'Carregando os dados na tela.'
+              );
+
+              // Atualização segura da interface
+            finally
+              FLoading.Ocultar;
+            end;
+          end
+        );
+
+      except
+        on E: Exception do
+        begin
+          TThread.Queue(
+            nil,
+            procedure
+            begin
+              FLoading.Ocultar;
+              ShowMessage(E.Message);
+            end
+          );
         end;
-      end
-    )
+      end;
+    end
   );
 end;
 ```
@@ -268,7 +365,7 @@ begin
     // Processo demorado
     Sleep(3000);
 
-    TThread.Synchronize(
+    TThread.Queue(
       nil,
       procedure
       begin
@@ -280,7 +377,7 @@ begin
   except
     on E: Exception do
     begin
-      TThread.Synchronize(
+      TThread.Queue(
         nil,
         procedure
         begin
@@ -336,6 +433,64 @@ end;
 
 ---
 
+## Exemplo 4 — ExecuteAsync
+
+A forma mais simples da versão 1.1.0 é usar `ExecuteAsync`.
+
+```delphi
+FLoading.ExecuteAsync(
+  'Gerando relatório...',
+  'Aguarde enquanto os dados são processados.',
+  procedure
+  begin
+    // Processo pesado fora da thread principal
+    GerarRelatorioPesado;
+  end,
+  procedure
+  begin
+    ShowMessage('Relatório gerado com sucesso!');
+  end,
+  procedure(const AErro: string)
+  begin
+    ShowMessage('Erro ao gerar relatório: ' + AErro);
+  end
+);
+```
+
+O helper faz automaticamente:
+
+- mostra o overlay;
+- executa o processo em `TTask`;
+- oculta o overlay ao finalizar;
+- chama o callback de sucesso;
+- chama o callback de erro em caso de exceção.
+
+---
+
+## Exemplo 5 — ExecuteAsync com erro tratado
+
+```delphi
+FLoading.ExecuteAsync(
+  'Processando...',
+  'Simulando uma falha durante a execução.',
+  procedure
+  begin
+    Sleep(2000);
+    raise Exception.Create('Erro de teste.');
+  end,
+  procedure
+  begin
+    ShowMessage('Processo concluído.');
+  end,
+  procedure(const AErro: string)
+  begin
+    ShowMessage('Erro capturado: ' + AErro);
+  end
+);
+```
+
+---
+
 ## Parent recomendado
 
 O overlay deve ser criado sobre um container visual real, preferencialmente o painel principal da tela.
@@ -353,7 +508,20 @@ Containers recomendados:
 - `TTabSheet`;
 - painel principal de conteúdo da tela.
 
-Evite usar diretamente o próprio formulário como parent quando a tela for aberta embutida dentro de outro formulário ou container.
+Evite usar diretamente o próprio formulário como parent quando a tela for aberta embutida dentro de outro formulário ou container, a menos que esteja usando um cenário simples e controlado.
+
+---
+
+## Boas práticas
+
+Para processos pesados:
+
+- não execute queries demoradas na thread principal;
+- não acesse componentes visuais diretamente dentro de `TTask` ou `TThread`;
+- use `TThread.Queue` ou callbacks para atualizar a interface;
+- em processos com banco de dados, use conexão própria para a thread;
+- sempre trate exceções;
+- sempre oculte o overlay ao finalizar ou falhar.
 
 ---
 
@@ -376,12 +544,13 @@ Este helper é útil para:
 
 ---
 
-## Estrutura sugerida do projeto
+## Estrutura do projeto
 
 ```text
 delphi-vcl-loading-overlay/
 │
 ├── README.md
+├── CHANGELOG.md
 ├── LICENSE
 ├── .gitignore
 │
@@ -389,21 +558,26 @@ delphi-vcl-loading-overlay/
 │   ├── uFrameLoadingOverlay.pas
 │   └── uLoadingOverlayHelper.pas
 │
-├── samples/
-│   ├── BasicSync/
-│   │   └── ExemploSync.pas
-│   │
-│   ├── BasicTTask/
-│   │   └── ExemploTTask.pas
-│   │
-│   └── BasicTThread/
-│       └── ExemploTThread.pas
-│
-└── docs/
-    ├── usage-sync.md
-    ├── usage-ttask.md
-    └── usage-tthread.md
+└── demo/
+    └── LoadingOverlayDemo/
+        ├── LoadingOverlayDemo.dpr
+        ├── LoadingOverlayDemo.dproj
+        ├── ufrmLoadingOverlayDemo.pas
+        └── ufrmLoadingOverlayDemo.dfm
 ```
+
+---
+
+## Demo
+
+O projeto acompanha um demo VCL com quatro cenários:
+
+1. Processo síncrono;
+2. Processo com `TTask`;
+3. Processo com `TThread`;
+4. Processo com `ExecuteAsync`.
+
+O objetivo do demo é mostrar a diferença entre apenas exibir feedback visual e executar corretamente operações demoradas fora da thread principal.
 
 ---
 
@@ -423,6 +597,6 @@ Este projeto está licenciado sob a licença MIT.
 
 ## Autor
 
-Desenvolvido por Angllys Bandeira Soares.
+Desenvolvido por **Angllys Bandeira Soares**.
 
 Desenvolvedor Delphi com foco em arquitetura backend, integração com banco de dados, Firebird, performance, sistemas corporativos e engines de processamento.
